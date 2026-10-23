@@ -81,6 +81,13 @@ button:focus-visible { outline: 4px solid var(--marigold); outline-offset: 3px; 
 #banner.show { animation: pop 1.6s ease-out forwards; }
 @keyframes pop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(-8deg); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1.15) rotate(3deg); } 25% { transform: translate(-50%, -50%) scale(1) rotate(0); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -62%) scale(1); } }
 
+/* Level progress */
+#prog { position: fixed; z-index: 5; top: calc(88px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 18px; background: var(--glass); border-radius: 999px; width: min(380px, 62vw); }
+#prog .track { position: relative; flex: 1; height: 14px; border: 3px solid var(--ink); border-radius: 8px; background: rgba(255, 246, 230, .15); }
+#progFill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: repeating-linear-gradient(90deg, var(--marigold) 0 10px, #ffdb6e 10px 20px); }
+#progHead { position: absolute; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; border: 3px solid var(--ink); box-shadow: 0 0 0 3px var(--paper) inset; }
+#prog .goal { width: 34px; height: 28px; flex: none; }
+
 /* Boss bar */
 #bossBar { position: fixed; z-index: 5; top: calc(86px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 10px; padding: 8px 16px 10px; background: var(--glass); border: 4px solid var(--ink); border-radius: 22px; width: min(420px, 70vw); animation: drop .5s ease-out; }
 #bossBar .tag { font-weight: 900; font-size: 13px; letter-spacing: .14em; color: var(--paper); background: #e8453c; border-radius: 6px; padding: 2px 7px; }
@@ -165,6 +172,10 @@ button:focus-visible { outline: 4px solid var(--marigold); outline-offset: 3px; 
   <button class="btn" id="bA" aria-label="Attack"><canvas id="atkIcon" width="192" height="192"></canvas></button>
 </div>
 
+<div id="prog" hidden aria-label="How close the boss is">
+  <div class="track"><i id="progFill"></i><span id="progHead"></span></div>
+  <svg class="goal" viewBox="0 0 40 32"><path d="M4 28L2 8l10 8 8-14 8 14 10-8-2 20z" fill="#ffc93d" stroke="#1e1633" stroke-width="3" stroke-linejoin="round"/><circle cx="20" cy="18" r="3.5" fill="#e8453c"/></svg>
+</div>
 <div id="bossBar" hidden><span class="tag">BOSS</span><span id="bossName">Big Clank</span><div class="bb"><i id="bossFill"></i></div></div>
 
 <div id="banner"></div>
@@ -639,7 +650,7 @@ let mode = 'menu', cur = 0, score = 0, best = 0, lastMile = 0, level = 1;
 let enemies = [], proj = [], parts = [], pops = [], plats = [], coins = [], items = [], gates = [], deco = [];
 let near = [], spawnT = 3, switching = 0, shakeT = 0, gameT = 0, camX = 0, menuCam = 0, flashT = 0;
 let genX = 0, nextGate = 0, slot = null;
-let fight = null, eproj = [], slowT = 0, lvlCoins = 0, lvlFoes = 0, medals = [], bestLevel = 0, fwT = 0, winTimers = [];
+let lvlStart = 0, fight = null, eproj = [], slowT = 0, lvlCoins = 0, lvlFoes = 0, medals = [], bestLevel = 0, fwT = 0, winTimers = [];
 const fx = { shield: 0, zoom: 0, fire: 0 };
 const FXDUR = { shield: 8, zoom: 9, fire: 10 };
 const POWERS = { heart: 'Heart!', shield: 'Star Shield!', zoom: 'Zoom Bolt!', fire: 'Fire Power!', bomb: 'Ninja Bomb!' };
@@ -729,6 +740,7 @@ function updateHUD() {
   if (cur !== shownCur) {
     document.querySelectorAll('.pal').forEach((el, i) => el.classList.toggle('on', i === cur));
     drawAtkIcon(); shownCur = cur;
+    $('progHead').style.background = hero().band;
   }
 }
 function updatePowerBtn() {
@@ -805,6 +817,7 @@ const BOSSES = [
   { id: 'thunder', name: 'Thunder Bot',  look: 'bot',  color: '#8b6cff', K: 1.85, w: 104, h: 134, hp: 12, speed: 55 },
 ];
 const bossFor = lv => BOSSES[(lv - 1) % BOSSES.length];
+const levelLen = lv => Math.min(16000, 9000 + (lv - 1) * 1500);
 
 // ---------- world generation ----------
 const plat = (kind, x, dy, w, h) => { const p = { kind, x, y: GY - dy, w, h: h || 0, solid: kind === 'crate' }; plats.push(p); return p; };
@@ -826,7 +839,7 @@ function resetWorld() {
   plats = []; coins = []; items = []; gates = []; deco = []; enemies = [];
   deco.push({ k: 'sign', x: 360 });
   coinRow(480, GY - 40, 4);
-  genX = 760; nextGate = 2800;
+  genX = 760; nextGate = levelLen(1);
   while (genX < W * 2.5) genChunk();
 }
 function genChunk() {
@@ -839,7 +852,7 @@ function genChunk() {
     plat('plank', L + (W - 120) * .3 - 75, 170, 150);
     plat('plank', L + (W - 120) * .62 - 75, 170, 150);
     gates.push({ x: gx, level: gates.length + 2, passed: false, open: false, opening: false, openT: 0 });
-    genX = gx + 360; nextGate = gx + 2800; return;
+    genX = gx + 360; nextGate = gx + levelLen(gates.length + 1); return;
   }
   const pat = ['steps', 'bridge', 'crates', 'float', 'stall', 'tower'][Math.floor(Math.random() * 6)];
   let w = 600;
@@ -916,7 +929,7 @@ function solidPush(ent, hw, h) {
 function startGame(i) {
   cur = i; score = 0; lastMile = 0; gameT = 0; level = 1;
   proj = []; parts = []; pops = []; spawnT = 3; switching = 0; slot = null; flashT = 0;
-  fight = null; eproj = []; slowT = 0; lvlCoins = 0; lvlFoes = 0; medals = []; clearWinTimers();
+  lvlStart = 0; fight = null; eproj = []; slowT = 0; lvlCoins = 0; lvlFoes = 0; medals = []; clearWinTimers();
   $('bossBar').hidden = true; $('win').hidden = true;
   fx.shield = fx.zoom = fx.fire = 0;
   for (let k = 0; k < 4; k++) hp[k] = MAXHP;
@@ -1039,6 +1052,17 @@ function usePower(type) {
       if (e.type === 'boss') hitEnemy(e, Math.sign(e.x - P.x) || 1, 1, 2); else kill(e);
     }
   } else { fx[type] = FXDUR[type]; sfx('use'); }
+}
+
+// ---------- level progress ----------
+function updateProgress() {
+  const el = $('prog'); const show = !fight;
+  if (el.hidden === show) el.hidden = !show;
+  if (!show) return;
+  const g = gates.find(q => !q.passed), end = (g ? g.x : nextGate) - W + 260;
+  const p = Math.max(0, Math.min(1, (P.x - lvlStart) / Math.max(1, end - lvlStart)));
+  $('progFill').style.width = (p * 100).toFixed(1) + '%';
+  $('progHead').style.left = (p * 100).toFixed(1) + '%';
 }
 
 // ---------- boss fight ----------
@@ -1212,6 +1236,7 @@ function nextLevel() {
   if ($('bNext').disabled) return;
   clearWinTimers();
   level = fight ? fight.g.level : level + 1;
+  lvlStart = fight ? fight.g.x : P.x;
   fight = null; eproj = []; slowT = 0;
   for (let k = 0; k < 4; k++) hp[k] = MAXHP;
   lvlCoins = 0; lvlFoes = 0; spawnT = 3;
@@ -1385,6 +1410,7 @@ function update(dt) {
   updateParticles(dt);
   if (shakeT > 0) shakeT -= dt;
   updateFxHud();
+  updateProgress();
 }
 function updateParticles(dt) {
   for (const q of parts) {
