@@ -16,10 +16,17 @@ Tip for little hands: turn on Guided Access (Settings > Accessibility > Guided A
 to keep your child inside the game.
 
 ## How to play
-- Arrows move, the blue button jumps, the big round button attacks (hold it to keep attacking).
+- Arrows run through the city, the blue button jumps (tap again in the air for a flip jump),
+  the big round button attacks (hold it to keep attacking).
+- Jump onto hanging planks, market awnings and crates. Land on a bad guy's head to bounce on it.
+- Collect gold coins (+5) and bubbles with power-ups. A heart heals right away; the others go
+  into the glowing power button so you can use them when you want:
+  Star Shield (can't be hurt, knocks out bad guys you touch), Zoom Bolt (run fast, jump higher),
+  Fire Power (giant fiery weapon), Ninja Bomb (clears the whole screen).
+- Walk through a red gate to reach the next level. A big robot guards each gate.
 - Tap a ninja face at the top to switch any time.
 - When a ninja runs out of hearts, they go rest and the next ninja jumps in.
   The team keeps rotating forever, so there is no game over.
-- Every 100 points: confetti and one heart back.
+- Every 200 points: confetti and one heart back. Each new level refills your hearts.
 
 Files: index.html (the whole game), manifest.json, sw.js (offline cache), icons.
