@@ -23,7 +23,12 @@ to keep your child inside the game.
   into the glowing power button so you can use them when you want:
   Star Shield (can't be hurt, knocks out bad guys you touch), Zoom Bolt (run fast, jump higher),
   Fire Power (giant fiery weapon), Ninja Bomb (clears the whole screen).
-- Walk through a red gate to reach the next level. A big robot guards each gate.
+- Each level ends in a boss arena. The gate is locked with magic bars until you beat the boss.
+  Bosses wear crowns and have a health bar. A "!" bubble means they are about to attack.
+  Big Clank charges (jump on a plank, then hit him while he is dizzy), Mega Goo jumps and splits
+  into mini goos, Captain Crow swoops down, Thunder Bot throws bouncing thunder balls
+  (jump over them or hit them). After four levels they come back as Super bosses.
+- Beat the boss, walk through the open gate, and you get a medal, three stars and fireworks.
 - Tap a ninja face at the top to switch any time.
 - When a ninja runs out of hearts, they go rest and the next ninja jumps in.
   The team keeps rotating forever, so there is no game over.
