@@ -56,6 +56,14 @@ button:focus-visible { outline: 4px solid var(--marigold); outline-offset: 3px; 
 .round svg { width: 30px; height: 30px; }
 
 #lvl { font-family: var(--font-body); font-weight: 900; font-size: 16px; color: var(--paper); text-shadow: none; text-transform: uppercase; letter-spacing: .08em; background: var(--dusk); border-radius: 999px; padding: 6px 12px; margin-left: 4px; white-space: nowrap; }
+#coinMeter { display: flex; align-items: center; gap: 8px; padding: 4px 14px 4px 4px; background: var(--glass); border-radius: 999px; width: max-content; }
+#coinMeter svg { width: 44px; height: 44px; }
+#coinMeter svg circle:nth-child(2) { transition: stroke-dashoffset .2s; }
+#coinTxt { font-family: var(--font-display); font-size: 24px; line-height: 1; color: var(--paper); font-variant-numeric: tabular-nums; min-width: 3.6em; }
+#coinMeter .arrow { font-weight: 900; font-size: 18px; color: var(--paper); opacity: .6; }
+#coinMeter .bub { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; border: 2.5px solid rgba(255, 255, 255, .9); background: rgba(255, 240, 180, .25); font-family: var(--font-display); font-size: 18px; color: var(--marigold); }
+#coinMeter.full { animation: meterPop .7s cubic-bezier(.2, 1.8, .4, 1); }
+@keyframes meterPop { 40% { transform: scale(1.25); box-shadow: 0 0 24px 6px rgba(255, 201, 61, .7); } }
 #fx { display: flex; flex-direction: column; gap: 6px; }
 .chip { display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; background: var(--glass); border-radius: 999px; width: max-content; }
 .chip canvas { width: 36px; height: 36px; }
@@ -152,6 +160,7 @@ button:focus-visible { outline: 4px solid var(--marigold); outline-offset: 3px; 
 <div class="hud" id="hudLeft" hidden>
   <div id="team" aria-label="Switch ninja"></div>
   <div id="hearts" aria-label="Health"></div>
+  <div id="coinMeter" aria-label="Coins until next power-up"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,246,230,.18)" stroke-width="6"/><circle id="coinRing" cx="22" cy="22" r="18" fill="none" stroke="#ffc93d" stroke-width="6" stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="113.1" transform="rotate(-90 22 22)"/><circle cx="22" cy="22" r="10" fill="#ffc93d" stroke="#1e1633" stroke-width="2.5"/><rect x="19.5" y="19.5" width="5" height="5" fill="#9a6412"/></svg><span id="coinTxt">0 / 40</span><span class="arrow">→</span><span class="bub">?</span></div>
   <div id="fx" aria-label="Active powers"></div>
 </div>
 <div class="hud" id="hudMid" hidden>
@@ -650,6 +659,8 @@ let mode = 'menu', cur = 0, score = 0, best = 0, lastMile = 0, level = 1;
 let enemies = [], proj = [], parts = [], pops = [], plats = [], coins = [], items = [], gates = [], deco = [];
 let near = [], spawnT = 3, switching = 0, shakeT = 0, gameT = 0, camX = 0, menuCam = 0, flashT = 0;
 let genX = 0, nextGate = 0, slot = null;
+let coinBank = 0, halfShown = false;
+const COIN_GOAL = 40;
 let lvlStart = 0, fight = null, eproj = [], slowT = 0, lvlCoins = 0, lvlFoes = 0, medals = [], bestLevel = 0, fwT = 0, winTimers = [];
 const fx = { shield: 0, zoom: 0, fire: 0 };
 const FXDUR = { shield: 8, zoom: 9, fire: 10 };
@@ -817,7 +828,7 @@ const BOSSES = [
   { id: 'thunder', name: 'Thunder Bot',  look: 'bot',  color: '#8b6cff', K: 1.85, w: 104, h: 134, hp: 12, speed: 55 },
 ];
 const bossFor = lv => BOSSES[(lv - 1) % BOSSES.length];
-const levelLen = lv => Math.min(16000, 9000 + (lv - 1) * 1500);
+const levelLen = lv => Math.min(56000, 32000 + (lv - 1) * 4000);
 
 // ---------- world generation ----------
 const plat = (kind, x, dy, w, h) => { const p = { kind, x, y: GY - dy, w, h: h || 0, solid: kind === 'crate' }; plats.push(p); return p; };
@@ -828,7 +839,7 @@ function pickPower() {
   if (hp[cur] <= 2 && Math.random() < .45) return 'heart';
   return ['heart', 'shield', 'zoom', 'fire', 'bomb', 'shield', 'fire'][Math.floor(Math.random() * 7)];
 }
-function item(x, y, chance) { if (Math.random() < chance) items.push({ x, y, type: pickPower() }); }
+function item(x, y, chance) { if (Math.random() < chance * .5) items.push({ x, y, type: pickPower() }); }
 function makeEnemy(type, x, y, onPlat) {
   const d = ENEMY[type];
   return { type, x, y, vx: 0, vy: 0, w: d.w, h: d.h, hp: d.hp, maxhp: d.hp, pts: d.pts,
@@ -929,6 +940,7 @@ function solidPush(ent, hw, h) {
 function startGame(i) {
   cur = i; score = 0; lastMile = 0; gameT = 0; level = 1;
   proj = []; parts = []; pops = []; spawnT = 3; switching = 0; slot = null; flashT = 0;
+  coinBank = 0; halfShown = false; updateCoinMeter();
   lvlStart = 0; fight = null; eproj = []; slowT = 0; lvlCoins = 0; lvlFoes = 0; medals = []; clearWinTimers();
   $('bossBar').hidden = true; $('win').hidden = true;
   fx.shield = fx.zoom = fx.fire = 0;
@@ -1054,6 +1066,24 @@ function usePower(type) {
   } else { fx[type] = FXDUR[type]; sfx('use'); }
 }
 
+// ---------- coin meter ----------
+function updateCoinMeter() {
+  $('coinTxt').textContent = coinBank + ' / ' + COIN_GOAL;
+  $('coinRing').style.strokeDashoffset = (113.1 * (1 - coinBank / COIN_GOAL)).toFixed(1);
+}
+function bankCoin() {
+  coinBank++;
+  if (coinBank >= COIN_GOAL) {
+    coinBank = 0;
+    const type = hp[cur] <= 2 ? 'heart' : ['shield', 'zoom', 'fire', 'bomb'][Math.floor(Math.random() * 4)];
+    for (let i = 0; i < 16; i++) { const a = i / 16 * TAU; parts.push({ x: P.x, y: P.y - 60, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260, life: .7, max: .7, r: 10, shape: 'star', color: '#ffc93d', rot: a, vr: 6, nograv: true }); }
+    const m = $('coinMeter'); m.classList.remove('full'); void m.offsetWidth; m.classList.add('full');
+    collectItem({ x: P.x, y: P.y - 60, type });
+    banner('Coin Power!', '#ffc93d');
+  }
+  updateCoinMeter();
+}
+
 // ---------- level progress ----------
 function updateProgress() {
   const el = $('prog'); const show = !fight;
@@ -1062,6 +1092,7 @@ function updateProgress() {
   const g = gates.find(q => !q.passed), end = (g ? g.x : nextGate) - W + 260;
   const p = Math.max(0, Math.min(1, (P.x - lvlStart) / Math.max(1, end - lvlStart)));
   $('progFill').style.width = (p * 100).toFixed(1) + '%';
+  if (!halfShown && p >= .5) { halfShown = true; banner('Halfway there!', '#7fd6ff'); sfx('cheer'); }
   $('progHead').style.left = (p * 100).toFixed(1) + '%';
 }
 
@@ -1236,7 +1267,7 @@ function nextLevel() {
   if ($('bNext').disabled) return;
   clearWinTimers();
   level = fight ? fight.g.level : level + 1;
-  lvlStart = fight ? fight.g.x : P.x;
+  lvlStart = fight ? fight.g.x : P.x; halfShown = false;
   fight = null; eproj = []; slowT = 0;
   for (let k = 0; k < 4; k++) hp[k] = MAXHP;
   lvlCoins = 0; lvlFoes = 0; spawnT = 3;
@@ -1292,7 +1323,7 @@ function update(dt) {
       }
     }
     // coins & items
-    for (const k of coins) if (!k.taken && Math.abs(k.x - P.x) < 38 && k.y > P.y - 120 && k.y < P.y + 14) { k.taken = true; lvlCoins++; sparkle(k.x, k.y, 5); sfx('coin'); addScore(5); }
+    for (const k of coins) if (!k.taken && Math.abs(k.x - P.x) < 38 && k.y > P.y - 120 && k.y < P.y + 14) { k.taken = true; lvlCoins++; sparkle(k.x, k.y, 5); sfx('coin'); addScore(5); bankCoin(); }
     for (const it of items) if (!it.taken && Math.abs(it.x - P.x) < 46 && it.y > P.y - 140 && it.y < P.y + 30) collectItem(it);
     coins = coins.filter(k => !k.taken && k.x > camX - 1200);
     items = items.filter(it => !it.taken && it.x > camX - 1200);
